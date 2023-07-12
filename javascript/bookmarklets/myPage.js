@@ -5,63 +5,63 @@ License: http://mrclay.org/licenses/bsd.html
 */
 (function() {
 	var
-		d = document,
+		doc = document,
 		i = 0,
 		l,
-		em = 0, // edit mode
-		ed, // HTML editor
-		b = d.body,
-		w = window,
-		sl = [], // selected
+		editMode = 0, // edit mode
+		htmlEditor, // HTML editor
+		body = doc.body,
+		window = window,
+		selected = [], // selected
 		hid = [],
-		$ = b.getElementsByTagName('*'),
-		cTp = (d.all && !w.opera)? 'absolute' : 'fixed', //ie
-		css = d.createElement('style');
+		$ = body.getElementsByTagName('*'),
+		cTp = (doc.all && !window.opera)? 'absolute' : 'fixed', //ie
+		css = doc.createElement('style');
 	css.type = 'text/css';
 	css.media = 'all';
 	// help panel
 	var cT = '#mPp{font-size:15px;padding:5px;background:#fdd;color:#000;position:'+cTp+';top:0;right:0;zIndex:1000;text-align:right}#mPp:hover{padding:.5em;line-height:1.6;}#mPp:hover u{display:none}#mPp i{display:none;text-align:left;cursor:default;color:#000}#mPp:hover i{display:block}#mPp b{border:1px outset #000;background:#fff;color:#666;padding:0 2px;margin-right:4px}#mPe{position:absolute;left:0;right:0;padding:5px 10px;background:#fdd;text-align:left}#mPe textarea{width:99%;display:block}' + 
 	// rest must be important
-'.mPs,.mPs *{background:#ff0;color:#000;}.mPh{background:#ffc;}.mPi,.mPi *{background:#fff;width:auto;float:none;margin:1em 0;padding:0;}body.mPi{text-align:left;margin:0;}'.replace(/;/g,' !important;');
+'.mPs,.mPs *{background:#ff0;color:#000;}.mPh{background:#ffc; opacity:0.6;}.mPi,.mPi *{background:#fff;width:auto;float:none;margin:1em 0;padding:0;}body.mPi{text-align:left;margin:0;}'.replace(/;/g,' !important;');
 	if (css.styleSheet)
 		css.styleSheet.cssText = cT;
 	else
-		css.appendChild(d.createTextNode(cT)); // webkit no like innerHTML
-	d.getElementsByTagName('head')[0].appendChild(css);
+		css.appendChild(doc.createTextNode(cT)); // webkit no like innerHTML
+	doc.getElementsByTagName('head')[0].appendChild(css);
 	
-	function nB(e) { // no event bubbling
-		if (!e) var e = w.event; // IE
+	function noEventBubbling(e) { // no event bubbling
+		if (!e) var e = window.event; // IE
 		e.cancelBubble = true;
 		if (e.stopPropagation) e.stopPropagation();
 	}
 	function over(e) {
-		nB(e);
-		!em && !this.isSel && changeCn(this, 'mPh');
+		noEventBubbling(e);
+		!editMode && !this.isSel && changeClassName(this, 'mPh');
 	}
 	function out(e) {
-		nB(e);
-		!em && !this.isSel && changeCn(this);
+		noEventBubbling(e);
+		!editMode && !this.isSel && changeClassName(this);
 	}
 	function clik(e) {
-		nB(e);
-		!em && this.isSel? unSel(this) : sel(this);
+		noEventBubbling(e);
+		!editMode && this.isSel? unSelect(this) : select(this);
 		return false;
 	}
 	while (l = $.item(i++)) { // all elements
 		addEvents(l);
 	}
-	var h = d.createElement('a'); //help panel
+	var h = doc.createElement('a'); //help panel
 	h.id = 'mPp';
 	h.href = 'http://mrclay.org/';
 	h.innerHTML = '<u>?</u><i><b>R</b>emove Selected</i><i><b>U</b>ndo Remove</i><i><b>I</b>solate Selected</i><i><b>P</b>rint Preview</i><i><b>W</b>iden Selected</i><i><i><b>B</b>ackwards</i><b>N</b>ext</i><i><b>D</b>eselect</i><i><b>C</b>opy Element</i><i><b>E</b>dit HTML</i><i><b>Esc</b>ape/Quit</i>';
-	h.onclick = function(e) {nB(e);};
-	b.appendChild(h);
-	d.onkeydown = function(e) {
-		var ls = sl.length? sl[sl.length - 1] : 0; //last selection
+	h.onclick = function(e) {noEventBubbling(e);};
+	body.appendChild(h);
+	doc.onkeydown = function(e) {
+		var lastSelected = selected.length? selected[selected.length - 1] : 0; //last selection
 		if (!e) var e = window.event;
 		if (e.keyCode == 27) { // esc = exit, cleanup events
-			rm(h);
-			rm(css);
+			remove(h);
+			remove(css);
 			i = 0;
 			while (l = $.item(i++)) {
 				l.onmouseover = l.oldOnmouseover || null;
@@ -71,107 +71,107 @@ License: http://mrclay.org/licenses/bsd.html
 				l.oldOnmouseout = null;
 				l.oldOnclick = null;
 			}
-			d.onkeydown = null;
-			em && rm(ed);
+			doc.onkeydown = null;
+			editMode && remove(htmlEditor);
 		}
-		if (em) return true;
+		if (editMode) return true;
 		switch (e.keyCode) {
 			case 82: // r = remove
-				while (sl.length) {
-					ls = sl[sl.length - 1];
-					ls.style.display = 'none';
-					unSel(ls);
-					hid.push(ls);
+				while (selected.length) {
+					lastSelected = selected[selected.length - 1];
+					lastSelected.style.display = 'none';
+					unSelect(lastSelected);
+					hid.push(lastSelected);
 				}
 			break;
 			case 73: // i = isolate
-				sel(h);
-				while (b.hasChildNodes()) b.removeChild(b.firstChild);
-				while (sl.length) {
-					b.appendChild(sl[0]);
-					unSel(sl[0]);
+				select(h);
+				while (body.hasChildNodes()) body.removeChild(body.firstChild);
+				while (selected.length) {
+					body.appendChild(selected[0]);
+					unSelect(selected[0]);
 				}
 			break;
 			case 87: // w = widen
-				if (ls) {
-					unSel(ls);
-					(ls!=b) && sel(ls.parentNode);
+				if (lastSelected) {
+					unSelect(lastSelected);
+					(lastSelected!=body) && select(lastSelected.parentNode);
 				}
 			break;
 			case 80: // p = print preview
 				pp();
 			break;
 			case 68: // d = deselect
-				unSel(ls);
+				unSelect(lastSelected);
 			break;
 			case 85: // u = undo remove
 				hid.length && (hid.pop().style.display = '');
 			break;
 			case 69: // e = edit HTML
-				ls && ls.innerHTML && edit(ls);
+				lastSelected && lastSelected.innerHTML && edit(lastSelected);
 			break;
 			case 66: // b = before element
-				if (ls) {
-					l = d.getElementsByTagName('*').item(getSourceIndex(ls) - 1);
-					if (l && l!=b) {
-						unSel(ls);
-						sel(l);
+				if (lastSelected) {
+					l = doc.getElementsByTagName('*').item(getSourceIndex(lastSelected) - 1);
+					if (l && l!=body) {
+						unSelect(lastSelected);
+						select(l);
 					}
 				}
 			break;
 			case 78: // n = next element
-				if (ls) {
-					l = d.getElementsByTagName('*').item(getSourceIndex(ls) + 1);
+				if (lastSelected) {
+					l = doc.getElementsByTagName('*').item(getSourceIndex(lastSelected) + 1);
 					if (l && l!=h) {
-						unSel(ls);
-						sel(l);
+						unSelect(lastSelected);
+						select(l);
 					}
 				}
 			break;
 			case 67: // c = copy
-				if (ls) {
-					l = ls.cloneNode(true);
-					if (ls.id) {
+				if (lastSelected) {
+					l = lastSelected.cloneNode(true);
+					if (lastSelected.id) {
 						l.id += '_copy';
 					}
-					ls.parentNode.insertBefore(l, ls.nextSibling);
+					lastSelected.parentNode.insertBefore(l, lastSelected.nextSibling);
 					addEvents(l);
 					i = 0;
 					var desc;
 					while (desc = l.getElementsByTagName('*').item(i++))
 						addEvents(desc);
-					unSel(ls);
-					sel(l);
+					unSelect(lastSelected);
+					select(l);
 				}
 			break;
 			default: return true;
 		}
 		return false;
 	};
-	function rm(l) {
+	function remove(l) {
 		l.parentNode.removeChild(l);
 	}
-	function changeCn(l, cN) {
+	function changeClassName(l, cN) {
 		l.className = l.className.replace(/\bmP[hs]\b/g, '');
 		if (cN) l.className += l.className? ' ' + cN : cN;
 	}
-	function sel(l) {
-		changeCn(l, 'mPs');
+	function select(l) {
+		changeClassName(l, 'mPs');
 		l.isSel = '1';
-		sl.push(l);
+		selected.push(l);
 	}
-	function unSel(l) {
-		changeCn(l);
+	function unSelect(l) {
+		changeClassName(l);
 		l.isSel = '';
-		for (var i=0, len=sl.length; i<len; i++) {
-			if (sl[i]==l) {
-				sl.splice(i, 1);
+		for (var i=0, len=selected.length; i<len; i++) {
+			if (selected[i]==l) {
+				selected.splice(i, 1);
 				return;
 			}
 		}
 	}
 	function edit(l) { // here we go
-		em = 1;
+		editMode = 1;
 		var 
 			left = 0, // http://www.quirksmode.org/js/findpos.html :)
 			top = 0,
@@ -184,40 +184,40 @@ License: http://mrclay.org/licenses/bsd.html
 				tmp = tmp.offsetParent;
 			}
 		}
-		ed = d.createElement('div'); //editor
-		ed.id = 'mPe';
-		b.appendChild(ed);
-		ed.style.top = (top + l.offsetHeight + 5) + 'px';
-		unSel(l);
+		htmlEditor = doc.createElement('div'); //editor
+		htmlEditor.id = 'mPe';
+		body.appendChild(htmlEditor);
+		htmlEditor.style.top = (top + l.offsetHeight + 5) + 'px';
+		unSelect(l);
 		var oh = getOuterHTML(l
 			).replace(/^\s*|\s*$/g,'' 								// trim
 			).replace(/ isSel[<>]*\u003E/g, '>'		// cust props (ie shows)
 			).replace(/ class=""(?=[^<>]*>)/g, '');	// empty class
-		sel(l);
+		select(l);
 		var rows = Math.min(15, oh.split('\n').length + 3);
-		ed.innerHTML = '<textarea id=mPta rows='+rows+'></textarea><button id=mPbu>done</button>';
-		d.getElementById('mPta').value = oh;
-		d.getElementById('mPta').onchange = function() {
+		htmlEditor.innerHTML = '<textarea id=mPta rows='+rows+'></textarea><button id=mPbu>done</button>';
+		doc.getElementById('mPta').value = oh;
+		doc.getElementById('mPta').onchange = function() {
 			chg = 1;
 		};
 		function finEdit() {
-			unSel(l);
-			em = 0;
+			unSelect(l);
+			editMode = 0;
 			if (chg) {
-				var tmp = b.appendChild(d.createElement('div'));
-				tmp.innerHTML = d.getElementById('mPta').value;
+				var tmp = body.appendChild(doc.createElement('div'));
+				tmp.innerHTML = doc.getElementById('mPta').value;
 				i = 0;
 				var desc;
 				while (desc = tmp.getElementsByTagName('*').item(i++))
 					addEvents(desc);
 				while (tmp.hasChildNodes()) 
 					l.parentNode.insertBefore(tmp.firstChild, l);
-				rm(l);
-				rm(tmp);
+				remove(l);
+				remove(tmp);
 			}
-			rm(ed);			
+			remove(htmlEditor);			
 		}
-		d.getElementById('mPbu').onclick = d.getElementById('mPbu').onkeypress = finEdit; // wk needed kp
+		doc.getElementById('mPbu').onclick = doc.getElementById('mPbu').onkeypress = finEdit; // wk needed kp
 	}
 	function addEvents(l) {
 		if ('String' != typeof l.isSel) {
@@ -235,14 +235,14 @@ License: http://mrclay.org/licenses/bsd.html
 		if (l.sourceIndex) return l.sourceIndex;
 		i = 0;
 		var el;
-		while (el = d.getElementsByTagName('*').item(i)) {
+		while (el = doc.getElementsByTagName('*').item(i)) {
 			if (el==l) return i;	
 			++i;
 		}
 	}
 	function getOuterHTML(l) { // for gecko
 		if (l.outerHTML) return l.outerHTML;
-		var dv = d.createElement('div');
+		var dv = doc.createElement('div');
 		dv.appendChild(l.cloneNode(true));
 		return dv.innerHTML;
 	}
@@ -251,7 +251,7 @@ License: http://mrclay.org/licenses/bsd.html
 			i = 0, 
 			m,
 			//d = document,
-			ss = d.styleSheets,
+			ss = doc.styleSheets,
 			wk = /webkit/i.test(navigator.userAgent);
 		if (ss && !wk) { // use w3c
 			for (i = 0; i<ss.length; i++) {
@@ -264,13 +264,13 @@ License: http://mrclay.org/licenses/bsd.html
 		} else { // limited to link and style elements
 			ss = [];
 			var r, l;
-			while (l = d.getElementsByTagName('link').item(i++)) { // collect stylesheet links...
+			while (l = doc.getElementsByTagName('link').item(i++)) { // collect stylesheet links...
 				r = l.getAttribute('rel');
 				if (r && /^style/i.test(r))
 					ss.push(l);
 			}
 			i = 0;
-			while (l = d.getElementsByTagName('style').item(i++))
+			while (l = doc.getElementsByTagName('style').item(i++))
 				ss.push(l); // ...and style elements
 			for (i = ss.length - 1; i >= 0; i--) {
 				if (wk)
